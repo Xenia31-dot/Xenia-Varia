@@ -73,3 +73,41 @@ def write_back_excel(
     out = io.BytesIO()
     wb.save(out)
     return out.getvalue()
+
+
+def write_back_word(template: bytes, answers: list[tuple], skip_no_answer: bool = False) -> bytes:
+    """answers: (Question, answer text) pairs from `detect_word_questions`.
+
+    Table questions get the answer in their answer column. Paragraph questions
+    get a new paragraph right after the question.
+    """
+    import docx
+    from docx.oxml import OxmlElement
+    from docx.text.paragraph import Paragraph
+
+    document = docx.Document(io.BytesIO(template))
+    paragraphs = list(document.paragraphs)  # capture before inserting anything
+    tables = list(document.tables)
+
+    for question, answer in answers:
+        answer = (answer or "").strip()
+        if skip_no_answer and (not answer or answer == NO_ANSWER):
+            continue
+        loc = question.location
+        if question.kind == "paragraph":
+            anchor = paragraphs[loc["paragraph"]]
+            new_p = OxmlElement("w:p")
+            anchor._p.addnext(new_p)
+            para = Paragraph(new_p, anchor._parent)
+            label = para.add_run("Answer: ")
+            label.bold = True
+            para.add_run(answer)
+        elif question.kind == "table":
+            row = tables[loc["table"]].rows[loc["row"]]
+            if loc.get("answer_col") is not None and loc["answer_col"] < len(row.cells):
+                row.cells[loc["answer_col"]].text = answer
+            else:
+                row.cells[loc["col"]].add_paragraph(f"Answer: {answer}")
+    out = io.BytesIO()
+    document.save(out)
+    return out.getvalue()

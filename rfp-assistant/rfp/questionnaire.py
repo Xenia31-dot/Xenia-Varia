@@ -176,3 +176,76 @@ def extract_excel_questions(data: bytes, layout: ExcelLayout) -> list[Question]:
             )
     wb.close()
     return questions
+
+
+# ====================================================================== Word
+
+_NUMBERED = re.compile(r"^\s*(q(uestion)?\s*)?\d+(\.\d+)*\s*[.):-]?\s+\S", re.IGNORECASE)
+_IMPERATIVE = re.compile(
+    r"^\s*(please\s+)?(describe|explain|provide|list|outline|detail|confirm|state|specify|"
+    r"indicate|identify|summari[sz]e)\b",
+    re.IGNORECASE,
+)
+
+
+def is_word_question(text: str) -> bool:
+    text = text.strip()
+    if len(text) < 8:
+        return False
+    return text.endswith("?") or bool(_IMPERATIVE.match(text)) or (
+        bool(_NUMBERED.match(text)) and len(text.split()) >= 4
+    )
+
+
+def detect_word_questions(data: bytes) -> list[Question]:
+    """Questions in body paragraphs and in tables, in document order."""
+    import docx
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
+
+    document = docx.Document(io.BytesIO(data))
+    questions: list[Question] = []
+    paragraph_index = table_index = 0
+    for block in document.element.body.iterchildren():
+        tag = block.tag.rsplit("}", 1)[-1]
+        if tag == "p":
+            para = Paragraph(block, document)
+            style = (para.style.name if para.style is not None else "").lower()
+            text = para.text.strip()
+            if not style.startswith(("heading", "title")) and is_word_question(text):
+                questions.append(Question(f"P{paragraph_index + 1}", text, "paragraph",
+                                          {"paragraph": paragraph_index}))
+            paragraph_index += 1
+        elif tag == "tbl":
+            questions.extend(_table_questions(Table(block, document), table_index))
+            table_index += 1
+    return questions
+
+
+def _table_questions(table, t_index: int) -> list[Question]:
+    rows = [[cell.text.strip() for cell in row.cells] for row in table.rows]
+    if not rows:
+        return []
+    width = max(len(r) for r in rows)
+    header = rows[0]
+    q_col = next((c for c, v in enumerate(header) if _header_match(v, QUESTION_HEADERS)), None)
+    start = 1
+    if q_col is None:
+        start = 0
+        scores = [sum(1 for r in rows if c < len(r) and is_word_question(r[c])) for c in range(width)]
+        if not scores or max(scores) == 0:
+            return []
+        q_col = scores.index(max(scores))
+    a_col = next((c for c, v in enumerate(header) if c != q_col and _header_match(v, ANSWER_HEADERS)),
+                 None)
+    if a_col is None and q_col + 1 < width:
+        a_col = q_col + 1
+    out = []
+    for r in range(start, len(rows)):
+        if q_col >= len(rows[r]):
+            continue
+        text = rows[r][q_col]
+        if text and (start == 1 and len(text) >= 8 or is_word_question(text)):
+            out.append(Question(f"T{t_index + 1}R{r + 1}", text, "table",
+                                {"table": t_index, "row": r, "col": q_col, "answer_col": a_col}))
+    return out

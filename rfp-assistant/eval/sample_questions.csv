@@ -1,0 +1,19 @@
+question,expected_facts
+Is customer data encrypted at rest and in transit?,AES-256|TLS 1.2
+Does the platform support single sign-on (SSO)? Which protocols?,SAML|OpenID Connect
+Which security certifications does your company hold?,SOC 2|ISO 27001
+Are you FedRAMP authorized?,FedRAMP|Not supported OR not FedRAMP authorized
+How often are penetration tests performed?,annual OR every year OR yearly OR once a year
+What uptime SLA do you offer for the Enterprise plan?,99.95%
+"Describe your backup policy, including RPO and RTO.",daily|35 days|24 hours|4 hours
+What are your support hours for Enterprise customers?,24/7
+How quickly do you respond to a P1 incident on the Enterprise plan?,1 hour
+Where is customer data hosted?,AWS OR Amazon Web Services|Frankfurt OR eu-central-1|Virginia OR us-east-1
+Can the solution be deployed on-premise?,Not supported OR not offered OR SaaS only
+Which data warehouses can you connect to?,Snowflake|BigQuery
+What does the Enterprise plan cost per user per month?,60
+What is the API rate limit?,"1,000 OR 1000"
+Is multi-factor authentication available?,MFA OR multi-factor
+How long is customer data kept after the contract ends?,30 days
+What is your company's annual revenue?,NO_ANSWER
+Do you offer on-site training in Japan?,NO_ANSWER

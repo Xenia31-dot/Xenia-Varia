@@ -28,12 +28,19 @@ class Settings:
     embedder: str = "default"  # "default" (local MiniLM) or "hashing" (offline, for tests)
     top_k: int = 6
     library_k: int = 3
-    library_min_score: float = 0.75
+    library_min_score: float = 0.55  # cosine similarity between questions
     chunk_size: int = 1200
     chunk_overlap: int = 200
     batch_size: int = 5
     max_retries: int = 4
     use_fallback: bool = True
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, default))
+    except ValueError:
+        return default
 
 
 def get_settings() -> Settings:
@@ -43,6 +50,7 @@ def get_settings() -> Settings:
         data_dir=Path(os.environ.get("RFP_DATA_DIR", "data")),
         embedder=os.environ.get("RFP_EMBEDDER", Settings.embedder),
         top_k=_env_int("RFP_TOP_K", Settings.top_k),
+        library_min_score=_env_float("RFP_LIBRARY_MIN_SCORE", Settings.library_min_score),
         batch_size=_env_int("RFP_BATCH_SIZE", Settings.batch_size),
         max_retries=_env_int("RFP_MAX_RETRIES", Settings.max_retries),
         use_fallback=_env_bool("RFP_USE_FALLBACK", Settings.use_fallback),

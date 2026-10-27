@@ -69,6 +69,7 @@ def _extract_docx(data: bytes) -> list[Section]:
     sections: list[Section] = []
     heading = "document"
     lines: list[str] = []
+    has_body = False  # headings with no text under them merge into the next section
 
     def flush() -> None:
         text = "\n".join(lines).strip()
@@ -85,8 +86,12 @@ def _extract_docx(data: bytes) -> list[Section]:
                 continue
             style = (para.style.name if para.style is not None else "") or ""
             if style.lower().startswith(("heading", "title")):
-                flush()
+                if has_body:
+                    flush()
+                    has_body = False
                 heading = text[:80]
+            else:
+                has_body = True
             lines.append(text)
         elif tag == "tbl":
             table = Table(block, document)
@@ -94,6 +99,7 @@ def _extract_docx(data: bytes) -> list[Section]:
                 cells = _unique_cells(cell.text.strip() for cell in row.cells)
                 if any(cells):
                     lines.append(" | ".join(cells))
+                    has_body = True
     flush()
     return sections
 
